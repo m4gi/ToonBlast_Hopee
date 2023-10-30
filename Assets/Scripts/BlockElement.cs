@@ -4,7 +4,7 @@ using UnityEngine;
 public abstract class BlockElement : MonoBehaviour
 {
     public abstract void OnMouseDown();
-     
+
     private int _x = -1;
 
     private int _y = -1;

@@ -52,8 +52,6 @@ public class BlockObject : BlockElement
         }
     }
 
-
-
     public override void OnMouseDown()
     {
         print("Block " + transform.position);
