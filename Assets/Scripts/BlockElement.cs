@@ -1,9 +1,10 @@
+using deVoid.Utils;
 using UnityEngine;
 
 public abstract class BlockElement : MonoBehaviour
 {
     public abstract void OnMouseDown();
-
+     
     private int _x = -1;
 
     private int _y = -1;
@@ -19,16 +20,6 @@ public abstract class BlockElement : MonoBehaviour
     }
     private void OnDestroy()
     {
-
-        GameManager mainLogic = null;
-        var spawnerGameObject = GameObject.Find("spawner");
-        if (null != spawnerGameObject)
-        {
-            mainLogic = spawnerGameObject.GetComponent<GameManager>();
-        }
-        if (null != mainLogic)
-        {
-            mainLogic.DeleteFromGrid(_x, _y);
-        }
+        Signals.Get<GameManagerDeleteFromGridSignal>().Dispatch(_x, _y);
     }
 }
