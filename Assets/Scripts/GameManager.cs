@@ -4,7 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-
+using TMPro;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -14,8 +14,6 @@ public class GameManagerGetBombedBrickSignal : ASignal<Transform> { }
 public class GameManagerDeleteFromGridSignal : ASignal<int, int> { }
 public class GameManager : MonoBehaviour
 {
-    
-
     private const float BrickHeight = 0.5f;
     private const float BrickWidth = 0.5f;
     private const int Undefined = -1;
@@ -34,7 +32,8 @@ public class GameManager : MonoBehaviour
     [SerializeField]
     [Range(3, 20)]
     private int CreateBomb = 5;
-
+    [SerializeField]
+    private int ScoreNeed = 3000;
     public GameObject[] blocks;
     public GameObject bomb;
 
@@ -45,15 +44,29 @@ public class GameManager : MonoBehaviour
     private int _blockCounter;
 
     public bool gameOver;
-
-
+    public bool waitNewMatch;
     private bool _crRunning;
+
+    [Header("Time Count Down Setting")]
+    public float timeRemaining = 120;
+    public bool timerIsRunning = true;
+
+    [Header("UI Setting")]
+    [SerializeField]
+    private TMP_Text scoreText;
+    [SerializeField]
+    private TMP_Text timeText;
 
     void Start()
     {
         Signals.Get<GameManagerGetClickedBrickSignal>().AddListener(GetClickedBrick);
         Signals.Get<GameManagerDeleteFromGridSignal>().AddListener(DeleteFromGrid);
         Signals.Get<GameManagerGetBombedBrickSignal>().AddListener(GetBombedBrick);
+        StartGame();
+    }
+
+    private void StartGame()
+    {
         Grid = new Transform[Width][];
         for (int i = 0; i < Grid.Length; i++)
         {
@@ -106,11 +119,7 @@ public class GameManager : MonoBehaviour
             _changeHappen = true;
         }
 
-        if (!_crRunning && _changeHappen)
-        {
-            gameOver = !CheckAvailableMove();
-            _changeHappen = false;
-        }
+        StartCountDownGame();
 
         if (gameOver)
         {
@@ -211,36 +220,6 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    /**
-     * check if user can do a move
-     */
-    private Boolean CheckAvailableMove()
-    {
-        for (int i = 0; i < Width; i++)
-            for (int j = 0; j < Height; j++)
-            {
-                BlockType clickedColor = Grid[i][j].gameObject.GetComponent<BlockObject>().TypeBlock;
-                if (clickedColor.Equals(BlockType.Bomb) || clickedColor.Equals("missile") || clickedColor.Equals("upmissile"))
-                {
-                    return true;
-                }
-
-                List<Point> elementsToBeTraversed = new List<Point>();
-                List<Point> elementsToBeDeleted = new List<Point>();
-                elementsToBeTraversed.Add(new Point(i, j));
-                elementsToBeDeleted.Add(new Point(i, j));
-
-                Dictionary<int, int> missingBricksAtColumns = new Dictionary<int, int>();
-                missingBricksAtColumns.Add(i, 1);
-
-                TraverseNew(elementsToBeTraversed, clickedColor, elementsToBeDeleted, missingBricksAtColumns);
-
-                if (elementsToBeDeleted.Count > 1) return true;
-            }
-
-        return false;
-    }
-
     private void FindAndDeleteElements(Transform clickedObject)
     {
         int clickedBlockX = Undefined, clickedBlockY = Undefined;
@@ -269,8 +248,13 @@ public class GameManager : MonoBehaviour
 
             AddScore(elementsToBeDeleted.Count);
 
-            DeleteElements(elementsToBeDeleted, true, missingBricksAtColumns);
+            DeleteElements(elementsToBeDeleted, ShouldBoomBeCreated(elementsToBeDeleted), missingBricksAtColumns);
         }
+    }
+
+    private bool ShouldBoomBeCreated(List<Point> elementsToBeDeleted)
+    {
+        return elementsToBeDeleted.Count > CreateBomb;
     }
 
     private void BringNewBricks(Dictionary<int, int> dictionary)
@@ -311,7 +295,7 @@ public class GameManager : MonoBehaviour
                 createBomb = false;
                 pos = Grid[point.GetX()][point.GetY()].gameObject.transform.position;
                 Destroy(Grid[point.GetX()][point.GetY()].gameObject);
-                var bombObject = Instantiate(bomb, pos, Quaternion.identity,transform);
+                var bombObject = Instantiate(bomb, pos, Quaternion.identity, transform);
                 bombObject.GetComponent<BlockElement>().SetTypeBlock(bombObject.name, _blockCounter++);
                 Grid[point.GetX()][point.GetY()] = bombObject.transform;
                 dictionary[point.GetX()] -= 1;
@@ -360,6 +344,11 @@ public class GameManager : MonoBehaviour
         if (isBonus && count >= 5) { scoreToAdd += 200; }
         _score += scoreToAdd;
         print($"Score: {_score}");
+        scoreText.text = $"Score: {_score}";
+        if (_score >= ScoreNeed)
+        {
+            gameOver = true;
+        }
     }
 
     private void TraverseNew(List<Point> elementsToBeTraversed, BlockType color, List<Point> elementsToBeDeleted,
@@ -468,12 +457,40 @@ public class GameManager : MonoBehaviour
             }
         }
     }
-
-
+    private void StartCountDownGame()
+    {
+        if (timerIsRunning)
+        {
+            if (timeRemaining > 0)
+            {
+                timeRemaining -= Time.deltaTime;
+                DisplayTime(timeRemaining);
+            }
+            else
+            {
+                gameOver = true;
+                timeRemaining = 0;
+                timerIsRunning = false;
+            }
+        }
+    }
+    void DisplayTime(float timeToDisplay)
+    {
+        timeToDisplay += 1;
+        float minutes = Mathf.FloorToInt(timeToDisplay / 60);
+        float seconds = Mathf.FloorToInt(timeToDisplay % 60);
+        timeText.text = string.Format("Time: {0:00}:{1:00}", minutes, seconds);
+    }
     public void EndGame()
     {
-
+        if (!waitNewMatch)
+        {
+            waitNewMatch = true;
+            print("End Game");
+        }
+        
     }
+
 }
 
 struct Point
