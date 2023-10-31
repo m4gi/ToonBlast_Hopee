@@ -6,4 +6,5 @@ public class Constants
 {
     public const string ClickBrick = "ClickBrick";
     public const string ClickBomb = "ClickBomb";
+    public const string ClickBrickWrong = "ClickBrickWrong";
 }

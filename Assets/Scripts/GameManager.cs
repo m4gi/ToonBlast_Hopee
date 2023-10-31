@@ -1,4 +1,5 @@
-using deVoid.Utils;
+﻿using deVoid.Utils;
+using DevoidUI.Core;
 using DG.Tweening;
 using System;
 using System.Collections;
@@ -6,9 +7,12 @@ using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 using Random = UnityEngine.Random;
 
-public class GameManagerSignal : ASignal { }
+public class GameManagerRestartGameSignal : ASignal { }
+public class GameManagerNextLevelSignal : ASignal { }
+public class GameManagerCancelExitSignal : ASignal { }
 public class GameManagerGetClickedBrickSignal : ASignal<Transform> { }
 public class GameManagerGetBombedBrickSignal : ASignal<Transform> { }
 public class GameManagerDeleteFromGridSignal : ASignal<int, int> { }
@@ -48,6 +52,7 @@ public class GameManager : MonoBehaviour
     private bool _crRunning;
 
     [Header("Time Count Down Setting")]
+    public float timeInit = 120;
     public float timeRemaining = 120;
     public bool timerIsRunning = true;
 
@@ -56,25 +61,67 @@ public class GameManager : MonoBehaviour
     private TMP_Text scoreText;
     [SerializeField]
     private TMP_Text timeText;
+    [SerializeField]
+    private Button backToMain;
 
     void Start()
+    {
+        InitSignals();
+        StartGame();
+    }
+
+    private void InitSignals()
     {
         Signals.Get<GameManagerGetClickedBrickSignal>().AddListener(GetClickedBrick);
         Signals.Get<GameManagerDeleteFromGridSignal>().AddListener(DeleteFromGrid);
         Signals.Get<GameManagerGetBombedBrickSignal>().AddListener(GetBombedBrick);
-        StartGame();
+        Signals.Get<GameManagerRestartGameSignal>().AddListener(StartGame);
+        Signals.Get<GameManagerNextLevelSignal>().AddListener(NextLevel);
+        Signals.Get<GameManagerCancelExitSignal>().AddListener(CancelBackToMain);
+
+        ////// Setup Button
+        backToMain.onClick.AddListener(BackToMainMenu);
     }
 
-    private void StartGame()
+    [EditorButton]
+    public void StartGame()
     {
+        if (waitNewMatch)
+        {
+            waitNewMatch = false;
+            var children = new List<GameObject>();
+            foreach (Transform child in transform) children.Add(child.gameObject);
+            children.ForEach(child => Destroy(child));
+        }
         Grid = new Transform[Width][];
         for (int i = 0; i < Grid.Length; i++)
         {
             Grid[i] = new Transform[Height];
         }
-
+        gameOver = false;
+        timeRemaining = timeInit;
+        timerIsRunning = true;
         FillContainer();
         _score = 0;
+        scoreText.text = $"Score: {_score}";
+        
+    }
+
+    private void NextLevel()
+    {
+        timeInit -= 10;
+        StartGame();
+    }
+
+    private void BackToMainMenu()
+    {
+        UIFrameManager.Instance.OpenWindow(ScreenIds.ConfirmPopup);
+        _crRunning = true;
+    }
+    
+    private void CancelBackToMain()
+    {
+        _crRunning = false;
     }
 
     /**
@@ -242,6 +289,7 @@ public class GameManager : MonoBehaviour
             if (elementsToBeDeleted.Count < 2)
             {
                 clickedObject.DOShakePosition(0.5f, 0.1f);
+                Signals.Get<AudioMangerSignal>().Dispatch(Constants.ClickBrickWrong);
                 return;
             }
 
@@ -344,7 +392,7 @@ public class GameManager : MonoBehaviour
         if (isBonus && count >= 5) { scoreToAdd += 200; }
         _score += scoreToAdd;
         print($"Score: {_score}");
-        scoreText.text = $"Score: {_score}";
+        scoreText.text = $"Điểm số: {_score}";
         if (_score >= ScoreNeed)
         {
             gameOver = true;
@@ -471,26 +519,29 @@ public class GameManager : MonoBehaviour
                 gameOver = true;
                 timeRemaining = 0;
                 timerIsRunning = false;
+                UIFrameManager.Instance.OpenPanel(ScreenIds.ResultPanel, new ResultPanelProperties(false, _score));
             }
         }
     }
+
     void DisplayTime(float timeToDisplay)
     {
         timeToDisplay += 1;
         float minutes = Mathf.FloorToInt(timeToDisplay / 60);
         float seconds = Mathf.FloorToInt(timeToDisplay % 60);
-        timeText.text = string.Format("Time: {0:00}:{1:00}", minutes, seconds);
+        timeText.text = string.Format("Thời gian: {0:00}:{1:00}", minutes, seconds);
     }
     public void EndGame()
     {
         if (!waitNewMatch)
         {
             waitNewMatch = true;
+            timerIsRunning = false;
+            _crRunning = false;
             print("End Game");
+            UIFrameManager.Instance.OpenPanel(ScreenIds.ResultPanel, new ResultPanelProperties(true, _score));
         }
-        
     }
-
 }
 
 struct Point

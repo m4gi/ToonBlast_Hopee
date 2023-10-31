@@ -13,5 +13,7 @@ MonoBehaviour:
   m_Name: GameUIControll
   m_EditorClassIdentifier: 
   templateUIPrefab: {fileID: 7165475920447738754, guid: 8b7635e0dfcac6e489bd428df86ae0be, type: 3}
-  screensToRegister: []
+  screensToRegister:
+  - {fileID: 1946569109022384137, guid: 4a11b259c9b0df94b8cdbb8eff2be35d, type: 3}
+  - {fileID: 7344455294334359095, guid: ef995b5cef725244c9117e960350e0cc, type: 3}
   deactivateScreenGOs: 1
